@@ -1,0 +1,1530 @@
+<title>21 Calculator</title>
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#12161c;
+  --panel:#1a2028;
+  --raised:#20272f;
+  --line:#2b333d;
+  --ink:#eef1f4;
+  --ink-soft:#8892a0;
+  --amber:#f4b73e;
+  --amber-dim:#5c481e;
+  --win:#5fd08a;
+  --push:#e2c46a;
+  --lose:#ef5a5a;
+  --split:#6f9de0;
+  --shadow:0 10px 28px -14px rgba(0,0,0,0.6);
+}
+/* Deliberately single-world (instrument-panel) design: stays dark in both themes. */
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  display:flex;
+  justify-content:center;
+}
+.device{
+  width:100%;
+  max-width:430px;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:
+    radial-gradient(ellipse 140% 60% at 50% 0%, var(--raised), transparent 55%),
+    var(--bg);
+  position:relative;
+}
+
+/* status strip */
+.status{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 18px 10px;
+}
+.brand{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--amber);
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.brand .dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 8px var(--amber);
+  animation:pulse 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion:reduce){ .brand .dot{ animation:none; } }
+@keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+.step-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--ink-soft);
+}
+
+/* reading panel */
+.reading{
+  margin:2px 18px 14px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  padding:16px 18px 18px;
+}
+.slots-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.seat{
+  flex:1;
+}
+.seat-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin-bottom:6px;
+  display:block;
+}
+.card-slots{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.slot{
+  width:38px;height:52px;
+  border-radius:6px;
+  border:1.5px dashed var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;
+  font-size:16px;
+  color:var(--ink);
+  flex-shrink:0;
+  background:var(--raised);
+}
+.slot.filled{
+  border-style:solid;
+  border-color:var(--amber-dim);
+}
+.slot.dealer-face{
+  border-color:var(--amber);
+  color:var(--amber);
+}
+.slot{ cursor:pointer; transition:box-shadow .12s, border-color .12s; }
+.slot.selected{
+  border-color:var(--amber);
+  border-style:solid;
+  box-shadow:0 0 0 2px var(--amber-dim), 0 0 12px rgba(244,183,62,0.45);
+}
+.slot .rm{
+  position:absolute;
+}
+.slot-wrap{ position:relative; }
+.slot-remove{
+  position:absolute; top:-6px; right:-6px;
+  width:16px;height:16px;border-radius:50%;
+  background:var(--lose); color:#fff; border:none;
+  font-size:10px; line-height:16px; padding:0; cursor:pointer;
+}
+.vs{
+  font-family:'JetBrains Mono',monospace;
+  color:var(--ink-soft);
+  font-size:11px;
+  padding-top:16px;
+}
+.totals-row{
+  display:flex;
+  justify-content:space-between;
+  margin-top:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  color:var(--ink-soft);
+}
+.totals-row b{ color:var(--ink); font-size:15px; }
+.totals-row .bust{ color:var(--lose); }
+.totals-row .bj{ color:var(--amber); }
+
+/* readout */
+.readout{
+  margin:0 18px 14px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  padding:18px;
+}
+.readout.idle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:150px;
+  color:var(--ink-soft);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  text-align:center;
+  padding:24px;
+}
+.call-row{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:14px;
+}
+.call-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.call-action{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:34px;
+  color:var(--amber);
+  text-shadow:0 0 18px var(--amber-dim);
+  letter-spacing:0.02em;
+}
+.call-ev{
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  color:var(--ink-soft);
+  text-align:right;
+}
+.call-ev b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+
+.meter-row{ margin-bottom:12px; }
+.meter-head{
+  display:flex;
+  justify-content:space-between;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px;
+  margin-bottom:5px;
+}
+.meter-head .nm{ color:var(--ink); font-weight:600; }
+.meter-head .nm .star{ color:var(--amber); margin-left:5px; }
+.meter-head .pct{ color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+.meter{
+  height:16px;
+  border-radius:4px;
+  background:var(--raised);
+  display:flex;
+  overflow:hidden;
+  border:1px solid var(--line);
+}
+.meter div{ height:100%; }
+.meter .win{ background:var(--win); }
+.meter .push{ background:var(--push); }
+.meter .lose{ background:var(--lose); }
+.meter-legend{
+  display:flex; gap:10px; margin-top:4px;
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--ink-soft);
+}
+.meter-legend span{ display:flex; align-items:center; gap:3px; }
+.meter-legend i{ width:6px;height:6px;border-radius:1px; display:inline-block; }
+.i-win{ background:var(--win); } .i-push{ background:var(--push); } .i-lose{ background:var(--lose); }
+.payout-note{
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:3px;
+}
+.payout-note b{ color:var(--ink); }
+
+/* bet stepper */
+.bet-strip{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:0 18px 14px;
+  padding:10px 14px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.bet-strip .lbl{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.bet-controls{ display:flex; align-items:center; gap:10px; }
+.bet-btn{
+  width:28px;height:28px;border-radius:7px;
+  background:var(--raised); border:1px solid var(--line); color:var(--ink);
+  font-family:'JetBrains Mono',monospace; font-size:15px; cursor:pointer;
+}
+.bet-input-wrap{
+  font-family:'JetBrains Mono',monospace; font-weight:600; font-size:16px;
+  color:var(--amber);
+  display:flex; align-items:center; gap:1px;
+  background:var(--raised);
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:6px 4px 6px 12px;
+}
+.bet-input-wrap input{
+  width:80px;
+  background:transparent;
+  border:none;
+  color:var(--amber);
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;
+  font-size:16px;
+  text-align:left;
+  padding:2px 0;
+}
+.bet-input-wrap input:focus{ outline:none; }
+.bet-input-wrap:focus-within{ border-color:var(--amber-dim); }
+.bet-input-wrap input::-webkit-outer-spin-button,
+.bet-input-wrap input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+.bet-input-wrap input[type="number"]{ -moz-appearance:textfield; }
+
+/* table rules panel */
+.rules-panel{
+  margin:0 18px 14px;
+  padding:12px 14px 14px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.rules-panel summary{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  cursor:pointer;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.rules-panel summary::-webkit-details-marker{ display:none; }
+.rules-panel summary::after{ content:'adjust ▾'; color:var(--amber); font-size:10px; }
+.rules-panel[open] summary::after{ content:'adjust ▴'; }
+.rules-panel[open] summary{ margin-bottom:12px; }
+.rule-row{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px; gap:10px; flex-wrap:wrap;
+}
+.rule-row:last-child{ margin-bottom:0; }
+.rule-row .lbl{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft); }
+.seg{ display:flex; gap:5px; flex-wrap:wrap; }
+.seg button{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px;
+  padding:6px 10px;
+  border-radius:7px;
+  border:1px solid var(--line);
+  background:var(--raised);
+  color:var(--ink-soft);
+  cursor:pointer;
+}
+.seg button.active{
+  border-color:var(--amber);
+  color:var(--amber);
+  background:var(--amber-dim);
+}
+.custom-ratio{ display:flex; align-items:center; gap:4px; }
+.custom-ratio input{
+  width:34px;
+  background:var(--raised);
+  border:1px solid var(--line);
+  border-radius:6px;
+  color:var(--ink);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  text-align:center;
+  padding:4px 0;
+}
+.custom-ratio span{ color:var(--ink-soft); font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+.bj-banner{
+  background:linear-gradient(135deg, var(--amber), #c98f22);
+  color:#241a06;
+  border-radius:10px;
+  padding:14px 16px;
+  margin-bottom:2px;
+}
+.bj-banner .call-label{ color:#3a2a0c; }
+.bj-banner .call-action{ color:#241a06; text-shadow:none; }
+.bj-banner .call-ev b{ color:#241a06; }
+.bj-banner .call-ev{ color:#3a2a0c; }
+
+/* dealer face-mode toggle */
+.mode-row{
+  display:flex; align-items:center; justify-content:space-between;
+  margin:0 18px 14px; padding:10px 14px;
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+}
+.mode-row .lbl{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-soft); }
+.switch-wrap{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+.switch{ width:32px;height:18px;border-radius:99px;background:var(--raised); border:1px solid var(--line); position:relative; }
+.switch::after{ content:'';position:absolute; top:2px;left:2px; width:12px;height:12px;border-radius:50%; background:var(--ink-soft); transition:transform .15s, background .15s; }
+.switch-wrap input{ display:none; }
+input:checked + .switch{ border-color:var(--amber-dim); }
+input:checked + .switch::after{ transform:translateX(14px); background:var(--amber); }
+
+.spacer{ flex:1; }
+
+/* thumb-anchored picker */
+.picker-dock{
+  position:sticky;
+  bottom:0;
+  background:linear-gradient(180deg, transparent, var(--bg) 22%);
+  padding:10px 14px calc(14px + env(safe-area-inset-bottom));
+}
+.target-hint{
+  text-align:center;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px;
+  color:var(--amber);
+  margin-bottom:8px;
+  letter-spacing:0.03em;
+}
+.picker{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:5px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+  box-shadow:var(--shadow);
+}
+.picker button{
+  aspect-ratio:1/1.15;
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;
+  font-size:13px;
+  border-radius:7px;
+  border:1px solid var(--line);
+  background:var(--raised);
+  color:var(--ink);
+  cursor:pointer;
+}
+.picker button:active{ background:var(--amber-dim); border-color:var(--amber); transform:scale(0.94); }
+.dock-actions{
+  display:flex; gap:8px; margin-top:8px;
+}
+.dock-btn{
+  flex:1;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  padding:10px 0;
+  border-radius:9px;
+  border:1px solid var(--line);
+  background:var(--panel);
+  color:var(--ink-soft);
+  cursor:pointer;
+}
+.dock-btn.reset:active{ border-color:var(--lose); color:var(--lose); }
+.chart-link{
+  display:block;
+  width:100%;
+  margin-top:8px;
+  background:transparent;
+  border:none;
+  color:var(--amber);
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  text-align:center;
+  padding:8px 0 2px;
+  cursor:pointer;
+}
+.chart-link:hover{ text-decoration:underline; }
+
+/* ---- chances table page ---- */
+.chart-page{ max-width:600px; }
+.back-link{ background:none; border:none; cursor:pointer; padding:0; }
+.chart-panel{ padding:4px 18px 24px; }
+.chart-title{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:22px;
+  color:var(--ink);
+  margin:4px 0 4px;
+  letter-spacing:0.01em;
+}
+.chart-sub{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:12.5px;
+  color:var(--ink-soft);
+  margin:0 0 16px;
+  max-width:46ch;
+}
+.chart-legend{
+  display:flex; gap:16px; flex-wrap:wrap;
+  margin-bottom:14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px;
+  color:var(--ink-soft);
+}
+.chart-legend span{ display:flex; align-items:center; gap:6px; }
+.chart-legend i{ width:12px;height:12px;border-radius:3px; display:inline-block; }
+.lg-hit{ background:var(--win); }
+.lg-stand{ background:var(--lose); }
+.lg-double{ background:var(--amber); }
+.lg-split{ background:var(--split); }
+
+.chart-scroll{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel);
+  box-shadow:var(--shadow);
+}
+.strategy-table{
+  border-collapse:separate;
+  border-spacing:0;
+  width:100%;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12.5px;
+}
+.strategy-table th, .strategy-table td{
+  padding:0;
+  text-align:center;
+}
+.strategy-table thead th{
+  padding:9px 4px;
+  color:var(--ink-soft);
+  font-size:11px;
+  font-weight:600;
+  border-bottom:1px solid var(--line);
+  position:sticky; top:0;
+  background:var(--panel);
+}
+.strategy-table thead th.corner{
+  position:sticky; left:0; top:0; z-index:3;
+  background:var(--panel);
+}
+.strategy-table tbody th{
+  padding:8px 12px;
+  color:var(--ink);
+  font-weight:600;
+  text-align:left;
+  white-space:nowrap;
+  border-right:1px solid var(--line);
+  position:sticky; left:0;
+  background:var(--panel);
+}
+.strategy-table tbody tr:nth-child(odd) td:not(.cell), .strategy-table tbody tr:nth-child(odd) th{
+  background-color:rgba(255,255,255,0.015);
+}
+.strategy-table .section-row td, .strategy-table .section-row th{
+  padding:5px 12px;
+  font-size:9.5px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  background:var(--raised);
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+}
+.cell{
+  width:34px; height:30px;
+  font-weight:700;
+  color:#0d1115;
+}
+.cell.c-hit{ background:var(--win); }
+.cell.c-stand{ background:var(--lose); }
+.cell.c-double{ background:var(--amber); }
+.cell.c-split{ background:var(--split); }
+
+/* ---- auth screen ---- */
+.auth-page{ justify-content:flex-start; padding-bottom:40px; }
+.auth-hero{
+  padding:34px 24px 22px;
+  text-align:center;
+}
+.auth-hero .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--amber); box-shadow:0 0 10px var(--amber);
+  display:inline-block; margin-bottom:14px;
+  animation:pulse 2.2s ease-in-out infinite;
+}
+.auth-hero h1{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:24px;
+  color:var(--ink);
+  margin:0 0 6px;
+  letter-spacing:0.01em;
+}
+.auth-hero p{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:13px;
+  color:var(--ink-soft);
+  margin:0;
+}
+.auth-panel{
+  margin:0 20px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:8px;
+}
+.auth-tabs{
+  display:flex;
+  gap:4px;
+  padding:6px;
+}
+.auth-tabs button{
+  flex:1;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  padding:10px 0;
+  border-radius:9px;
+  border:none;
+  background:transparent;
+  color:var(--ink-soft);
+  cursor:pointer;
+}
+.auth-tabs button.active{
+  background:var(--raised);
+  color:var(--amber);
+}
+.auth-form{
+  padding:14px 18px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+.field input{
+  background:var(--raised);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:11px 13px;
+  color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:14.5px;
+}
+.field input:focus{ outline:none; border-color:var(--amber-dim); }
+.field-error{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--lose);
+  display:none;
+}
+.field.invalid input{ border-color:var(--lose); }
+.field.invalid .field-error{ display:block; }
+
+.plan-label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin-bottom:2px;
+}
+.plans{ display:flex; gap:10px; }
+.plan-card{
+  flex:1;
+  border:1.5px solid var(--line);
+  border-radius:11px;
+  padding:12px 12px 13px;
+  cursor:pointer;
+  background:var(--raised);
+  position:relative;
+}
+.plan-card.selected{
+  border-color:var(--amber);
+  box-shadow:0 0 0 1px var(--amber-dim), 0 0 14px rgba(244,183,62,0.25);
+}
+.plan-badge{
+  position:absolute; top:-9px; right:10px;
+  background:var(--amber); color:#241a06;
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; font-weight:700;
+  padding:2px 7px; border-radius:99px;
+  letter-spacing:0.05em;
+}
+.plan-name{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11.5px; font-weight:600; color:var(--ink);
+  margin-bottom:4px;
+}
+.plan-price{
+  font-family:'JetBrains Mono',monospace;
+  font-size:17px; font-weight:700; color:var(--amber);
+}
+.plan-price span{
+  font-size:10.5px; font-weight:500; color:var(--ink-soft);
+}
+.plan-sub{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:10.5px; color:var(--ink-soft);
+  margin-top:3px;
+}
+.auth-submit{
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  font-weight:700;
+  padding:13px 0;
+  border-radius:10px;
+  border:none;
+  background:var(--amber);
+  color:#241a06;
+  cursor:pointer;
+  margin-top:4px;
+}
+.auth-submit:active{ transform:scale(0.98); }
+.auth-fineprint{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:10.5px;
+  color:var(--ink-soft);
+  text-align:center;
+  line-height:1.5;
+  margin:2px 4px 0;
+}
+.auth-fineprint b{ color:var(--ink); }
+.demo-note{
+  margin:18px 20px 0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  color:var(--ink-soft);
+  text-align:center;
+  border-top:1px dashed var(--line);
+  padding-top:14px;
+}
+.sign-out-link{
+  display:block;
+  width:100%;
+  margin-top:6px;
+  background:transparent; border:none;
+  color:var(--ink-soft);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  text-align:center;
+  padding:4px 0;
+  cursor:pointer;
+}
+.sign-out-link:hover{ color:var(--ink); }
+
+/* ---- welcome / intro screen ---- */
+.intro-page{ padding-bottom:30px; }
+.intro-hero{ padding:32px 22px 8px; }
+.intro-eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10.5px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--amber);
+  margin:0 0 8px;
+}
+.intro-hero h1{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:25px;
+  color:var(--ink);
+  margin:0 0 10px;
+  letter-spacing:0.01em;
+}
+.intro-hero p{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:13.5px;
+  line-height:1.55;
+  color:var(--ink-soft);
+  margin:0;
+  max-width:48ch;
+}
+
+.odds-strip{
+  display:flex;
+  gap:10px;
+  margin:20px 20px 4px;
+}
+.odds-tile{
+  flex:1;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px 10px;
+  text-align:center;
+  box-shadow:var(--shadow);
+}
+.odds-tile .num{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:23px;
+  font-variant-numeric:tabular-nums;
+}
+.odds-tile.win .num{ color:var(--win); }
+.odds-tile.lose .num{ color:var(--lose); }
+.odds-tile.push .num{ color:var(--push); }
+.odds-tile .lbl{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9.5px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin-top:3px;
+}
+.odds-strip-note{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--ink-soft);
+  margin:8px 20px 0;
+}
+
+.intro-notes{
+  margin:22px 20px 0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.intro-note{
+  display:flex;
+  gap:12px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:13px 14px;
+}
+.intro-note .mark{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:13px;
+  color:var(--amber);
+  flex-shrink:0;
+  width:20px;
+}
+.intro-note .txt{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:12.5px;
+  line-height:1.5;
+  color:var(--ink);
+}
+.intro-note .txt b{ color:var(--amber); }
+
+.intro-cta{
+  margin:24px 20px 0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  font-weight:700;
+  padding:14px 0;
+  border-radius:11px;
+  border:none;
+  background:var(--amber);
+  color:#241a06;
+  cursor:pointer;
+  width:calc(100% - 40px);
+}
+.intro-cta:active{ transform:scale(0.98); }
+.intro-fineprint{
+  margin:10px 20px 0;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  color:var(--ink-soft);
+  text-align:center;
+}
+
+.disclaimer-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(8,10,13,0.88);
+  backdrop-filter:blur(3px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+  padding:20px;
+}
+.disclaimer-overlay[hidden]{ display:none; }
+.disclaimer-card{
+  width:100%;
+  max-width:380px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:24px 22px 20px;
+  text-align:center;
+}
+.disclaimer-card .dot{
+  width:8px; height:8px; border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 10px var(--amber);
+  display:inline-block;
+  margin-bottom:14px;
+}
+.disclaimer-card h2{
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  font-size:18px;
+  color:var(--ink);
+  margin:0 0 12px;
+  letter-spacing:0.01em;
+}
+.disclaimer-card p{
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:13.5px;
+  line-height:1.55;
+  color:var(--ink-soft);
+  margin:0 0 20px;
+}
+.disclaimer-card button{
+  width:100%;
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  font-weight:700;
+  padding:13px 0;
+  border-radius:10px;
+  border:none;
+  background:var(--amber);
+  color:#241a06;
+  cursor:pointer;
+}
+.disclaimer-card button:active{ transform:scale(0.98); }
+</style>
+
+
+<div class="disclaimer-overlay" id="disclaimerOverlay">
+  <div class="disclaimer-card">
+    <span class="dot"></span>
+    <h2>Before you continue</h2>
+    <p>This app helps you understand your chances, it doesn't mean you'll win every time. It's an advisory and understanding tool, not a guarantee. Gamble at your own risk.</p>
+    <button id="disclaimerAccept">I understand, continue</button>
+  </div>
+</div>
+
+<div class="device intro-page" id="introView">
+  <div class="status">
+    <div class="brand"><span class="dot"></span>21 Calculator</div>
+    <div class="step-label">before you start</div>
+  </div>
+
+  <div class="intro-hero">
+    <p class="intro-eyebrow">Welcome</p>
+    <h1>How the odds actually break down</h1>
+    <p>21 Calculator reads the table and shows you the math instantly. Before you play, here's what the numbers look like on an average hand, standard 6-deck table, dealer stands on soft 17.</p>
+  </div>
+
+  <div class="odds-strip">
+    <div class="odds-tile lose"><div class="num">49%</div><div class="lbl">Dealer wins</div></div>
+    <div class="odds-tile win"><div class="num">42%</div><div class="lbl">Player wins</div></div>
+    <div class="odds-tile push"><div class="num">9%</div><div class="lbl">Push</div></div>
+  </div>
+  <p class="odds-strip-note">Pushes happen more than most people expect: a lot of hands land on the same 17–21 total as the dealer.</p>
+
+  <div class="intro-notes">
+    <div class="intro-note">
+      <span class="mark">01</span>
+      <span class="txt">Playing <b>basic strategy correctly cuts the house edge to roughly 0.5%</b>, down from 2%+ on average intuitive play. It narrows your losses; it doesn't flip the game in your favour.</span>
+    </div>
+    <div class="intro-note">
+      <span class="mark">02</span>
+      <span class="txt">A natural blackjack lands on about <b>4.8% of hands</b> and typically pays <b>3:2</b>, though some tables only pay 6:5, which is worth checking before you sit down.</span>
+    </div>
+    <div class="intro-note">
+      <span class="mark">03</span>
+      <span class="txt"><b>Insurance is a bad bet</b> regardless of your hand: its true house edge is around 7%, far worse than the base game.</span>
+    </div>
+    <div class="intro-note">
+      <span class="mark">04</span>
+      <span class="txt">These figures shift with table rules (soft-17, payout ratio, deck count), so this app's Table Rules panel lets your live readings match the exact table you're at.</span>
+    </div>
+  </div>
+
+  <button class="intro-cta" id="introContinue">Open the calculator</button>
+  <p class="intro-fineprint">21 Calculator narrows the house edge. It doesn't guarantee a win.</p>
+</div>
+
+<div class="device" id="mainView" hidden>
+  <div class="status">
+    <div class="brand"><span class="dot"></span>21 Calculator</div>
+    <div class="step-label" id="stepLabel">tap dealer's card</div>
+  </div>
+
+  <div class="reading">
+    <div class="slots-row">
+      <div class="seat">
+        <span class="seat-label">Dealer</span>
+        <div class="card-slots" id="dealerSlots"></div>
+      </div>
+      <div class="vs">vs</div>
+      <div class="seat">
+        <span class="seat-label">You</span>
+        <div class="card-slots" id="playerSlots"></div>
+      </div>
+    </div>
+    <div class="totals-row">
+      <span id="dealerTotalTxt">dealer -</span>
+      <span id="playerTotalTxt">you -</span>
+    </div>
+  </div>
+
+  <div class="mode-row">
+    <span class="lbl">reveal dealer's hole card (what-if)</span>
+    <label class="switch-wrap">
+      <input type="checkbox" id="holeToggle">
+      <span class="switch"></span>
+    </label>
+  </div>
+
+  <div class="bet-strip">
+    <span class="lbl">bet</span>
+    <div class="bet-controls">
+      <button class="bet-btn" id="betDown">–</button>
+      <span class="bet-input-wrap">£<input type="number" id="betInput" value="25" min="1" step="1" inputmode="numeric"></span>
+      <button class="bet-btn" id="betUp">+</button>
+    </div>
+  </div>
+
+  <details class="rules-panel" id="rulesPanel">
+    <summary>Table rules, these change the odds</summary>
+    <div class="rule-row">
+      <span class="lbl">blackjack pays</span>
+      <div class="seg" id="bjPayoutSeg">
+        <button data-val="1.5" class="active">3:2</button>
+        <button data-val="1.2">6:5</button>
+        <button data-val="custom">custom</button>
+      </div>
+    </div>
+    <div class="rule-row" id="customRatioRow" style="display:none;">
+      <span class="lbl">custom ratio</span>
+      <div class="custom-ratio">
+        <input type="number" id="ratioNum" value="3" min="1">
+        <span>:</span>
+        <input type="number" id="ratioDen" value="2" min="1">
+      </div>
+    </div>
+    <div class="rule-row">
+      <span class="lbl">dealer hits soft 17</span>
+      <div class="seg" id="h17Seg">
+        <button data-val="0" class="active">stands (S17)</button>
+        <button data-val="1">hits (H17)</button>
+      </div>
+    </div>
+    <div class="rule-row">
+      <span class="lbl">decks in shoe</span>
+      <div class="seg" id="deckSeg">
+        <button data-val="1">1</button>
+        <button data-val="2">2</button>
+        <button data-val="4">4</button>
+        <button data-val="6" class="active">6</button>
+        <button data-val="8">8</button>
+      </div>
+    </div>
+  </details>
+
+  <div id="readoutHost"></div>
+
+  <div class="spacer"></div>
+
+  <div class="picker-dock">
+    <div class="target-hint" id="targetHint">DEALER'S UP-CARD</div>
+    <div class="picker" id="picker"></div>
+    <div class="dock-actions">
+      <button class="dock-btn" id="undoBtn">Undo</button>
+      <button class="dock-btn reset" id="resetBtn">New hand</button>
+    </div>
+    <button class="chart-link" id="openChart">Chances Table →</button>
+    <button class="sign-out-link" id="signOutBtn">Sign out</button>
+  </div>
+</div>
+
+<div class="device chart-page" id="chartView" hidden>
+  <div class="status">
+    <button class="brand back-link" id="closeChart">← 21 Calculator</button>
+    <div class="step-label">reference</div>
+  </div>
+  <div class="chart-panel">
+    <h1 class="chart-title">Basic Strategy Table</h1>
+    <p class="chart-sub">multi-deck, dealer stands on soft 17. The same math this app runs live, laid flat</p>
+    <div class="chart-legend">
+      <span><i class="lg-hit"></i>Hit</span>
+      <span><i class="lg-stand"></i>Stand</span>
+      <span><i class="lg-double"></i>Double</span>
+      <span><i class="lg-split"></i>Split</span>
+    </div>
+    <div class="chart-scroll">
+      <table class="strategy-table" id="strategyTable"></table>
+    </div>
+    <p class="chart-note">Reads as: your hand (rows) against the dealer's up-card (columns). When a double isn't allowed, hit instead. Treat this as a starting point. The live reading on the previous screen accounts for cards already out of the shoe, which this fixed table can't.</p>
+  </div>
+</div>
+
+<script>
+
+(function(){
+  var KEY = '21calc_disclaimer_ack';
+  var overlay = document.getElementById('disclaimerOverlay');
+  var btn = document.getElementById('disclaimerAccept');
+  try{
+    if(localStorage.getItem(KEY) === '1'){ overlay.hidden = true; }
+  }catch(e){}
+  btn.addEventListener('click', function(){
+    overlay.hidden = true;
+    try{ localStorage.setItem(KEY, '1'); }catch(e){}
+  });
+})();
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+function rv(r){ if(r==='A') return 11; if(['10','J','Q','K'].includes(r)) return 10; return parseInt(r,10); }
+let DECKS=6;
+let bjPayout=1.5;   // blackjack pays 3:2 by default; varies by casino/platform
+let dealerH17=false; // whether the dealer hits a soft 17 (also varies by table)
+
+let dealer=[null]; // ranks, [0]=up-card, [1]=hole (optional)
+let player=[null,null];
+let holeRevealed=false;
+let bet=25;
+let history=[]; // for undo: sequence of {who,index,prev}
+let selected={who:'dealer', index:0};
+
+function isBust(ranks){ return ranks.some(r=>r) && handTotal(ranks.filter(Boolean)).total>21; }
+function playerBust(){ return player.filter(Boolean).length>0 && handTotal(player.filter(Boolean)).total>21; }
+function dealerBust(){ return holeRevealed && dealer[0] && dealer[1] && handTotal(dealer.filter(Boolean)).total>21; }
+
+function handTotal(ranks){
+  let total=0, aces=0;
+  ranks.forEach(r=>{ total+=rv(r); if(r==='A') aces++; });
+  while(total>21 && aces>0){ total-=10; aces--; }
+  return {total, soft:aces>0};
+}
+
+// ---- picker ----
+const picker=document.getElementById('picker');
+RANKS.forEach(r=>{
+  const b=document.createElement('button');
+  b.textContent=r;
+  b.addEventListener('click', ()=> addCard(r));
+  picker.appendChild(b);
+});
+// build the ordered list of slots that currently exist, for click-selection & auto-advance
+function slotList(){
+  const list=[{who:'dealer', index:0}];
+  if(holeRevealed) list.push({who:'dealer', index:1});
+  player.forEach((_,i)=> list.push({who:'player', index:i}));
+  return list;
+}
+function selectSlot(who, index){
+  selected={who, index};
+  render();
+}
+function addCard(r){
+  const prev = selected.who==='dealer' ? dealer[selected.index] : player[selected.index];
+  if(selected.who==='dealer'){ dealer[selected.index]=r; }
+  else { player[selected.index]=r; }
+  history.push({who:selected.who, index:selected.index, prev});
+
+  // auto-advance to the next empty slot so tapping stays fast
+  const list=slotList();
+  const curPos = list.findIndex(s=> s.who===selected.who && s.index===selected.index);
+  let next=null;
+  for(let i=curPos+1;i<list.length;i++){
+    const s=list[i];
+    const val = s.who==='dealer' ? dealer[s.index] : player[s.index];
+    if(!val){ next=s; break; }
+  }
+  if(next) selected=next;
+  render();
+}
+document.getElementById('undoBtn').addEventListener('click', ()=>{
+  const last=history.pop();
+  if(!last) return;
+  if(last.who==='dealer') dealer[last.index]=last.prev;
+  else player[last.index]=last.prev;
+  selected={who:last.who, index:last.index};
+  render();
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  dealer=[null]; player=[null,null]; history=[]; holeRevealed=false;
+  selected={who:'dealer', index:0};
+  document.getElementById('holeToggle').checked=false;
+  render();
+});
+document.getElementById('holeToggle').addEventListener('change', e=>{
+  holeRevealed=e.target.checked;
+  if(!holeRevealed) dealer=[dealer[0]];
+  else if(dealer.length<2) dealer.push(null);
+  render();
+});
+document.getElementById('betUp').addEventListener('click', ()=>{ bet=Math.min(100000, bet+25); render(); });
+document.getElementById('betDown').addEventListener('click', ()=>{ bet=Math.max(1, bet-25); render(); });
+const betInput=document.getElementById('betInput');
+betInput.addEventListener('input', e=>{
+  const v=parseInt(e.target.value,10);
+  bet = isNaN(v) ? 0 : Math.max(0, Math.min(100000, v));
+  renderReadout();
+});
+betInput.addEventListener('blur', ()=>{
+  if(!bet || bet<1) bet=1;
+  render();
+});
+
+// ---- table rules (these genuinely change the odds by platform/casino) ----
+function wireSeg(id, onPick){
+  const el=document.getElementById(id);
+  el.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      el.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      onPick(b.dataset.val);
+      renderReadout();
+    });
+  });
+}
+wireSeg('bjPayoutSeg', val=>{
+  document.getElementById('customRatioRow').style.display = val==='custom' ? 'flex' : 'none';
+  if(val==='custom'){
+    updateCustomRatio();
+  } else {
+    bjPayout=parseFloat(val);
+  }
+});
+wireSeg('h17Seg', val=>{ dealerH17 = val==='1'; });
+wireSeg('deckSeg', val=>{ DECKS=parseInt(val,10); });
+function updateCustomRatio(){
+  const n=parseFloat(document.getElementById('ratioNum').value)||1;
+  const d=parseFloat(document.getElementById('ratioDen').value)||1;
+  bjPayout=n/d;
+  renderReadout();
+}
+document.getElementById('ratioNum').addEventListener('input', updateCustomRatio);
+document.getElementById('ratioDen').addEventListener('input', updateCustomRatio);
+
+// ---- odds engine ----
+function bjPayoutLabel(){
+  if(Math.abs(bjPayout-1.5)<0.001) return '3:2';
+  if(Math.abs(bjPayout-1.2)<0.001) return '6:5';
+  return bjPayout.toFixed(2)+':1';
+}
+function pc(){ return player.filter(Boolean); }
+function remainingCounts(){
+  const counts={}; RANKS.forEach(r=>counts[r]=DECKS*4);
+  pc().forEach(r=>counts[r]--);
+  if(dealer[0]) counts[dealer[0]]--;
+  if(holeRevealed && dealer[1]) counts[dealer[1]]--;
+  return counts;
+}
+function mulberry32(seed){ return function(){ seed|=0; seed=(seed+0x6D2B79F5)|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; } }
+function drawFrom(counts, rng){
+  let tot=0; RANKS.forEach(r=>tot+=Math.max(0,counts[r]));
+  if(tot<=0) return '10';
+  let x=rng()*tot;
+  for(const r of RANKS){ const n=Math.max(0,counts[r]); if(x<n) return r; x-=n; }
+  return '10';
+}
+function playDealer(upCard, counts, rng){
+  let cards=[upCard];
+  if(holeRevealed && dealer[1]) cards.push(dealer[1]);
+  else { const r=drawFrom(counts,rng); counts[r]--; cards.push(r); }
+  let {total,soft}=handTotal(cards);
+  while(total<17 || (total===17 && soft && dealerH17)){
+    const r=drawFrom(counts,rng); counts[r]--; cards.push(r);
+    const h=handTotal(cards); total=h.total; soft=h.soft;
+  }
+  return total;
+}
+function playOut(cards, counts, rng){
+  let c=cards.slice(); let {total,soft}=handTotal(c);
+  while(total<21){
+    const th=soft?18:17;
+    if(total>=th) break;
+    const r=drawFrom(counts,rng); counts[r]--; c.push(r);
+    const h=handTotal(c); total=h.total; soft=h.soft;
+  }
+  return handTotal(c).total;
+}
+function simulate(action, trials){
+  const cards=pc();
+  const pTotal=handTotal(cards).total;
+  if(pTotal>21) return null;
+  const rng=mulberry32(777);
+  let win=0,push=0,lose=0;
+  for(let t=0;t<trials;t++){
+    const counts=remainingCounts();
+    let finalTotal, bust=false;
+    if(action==='stand'){ finalTotal=pTotal; }
+    else if(action==='hit'){ finalTotal=playOut(cards,counts,rng); if(finalTotal>21) bust=true; }
+    else if(action==='double'){ const r=drawFrom(counts,rng); counts[r]--; finalTotal=handTotal(cards.concat([r])).total; if(finalTotal>21) bust=true; }
+    else if(action==='split'){
+      let results=[];
+      for(let h=0;h<2;h++){ const r=drawFrom(counts,rng); counts[r]--; results.push(playOut([cards[0],r],counts,rng)); }
+      const dTotal=playDealer(dealer[0],counts,rng);
+      results.forEach(rt=>{ if(rt>21) lose++; else if(dTotal>21) win++; else if(rt>dTotal) win++; else if(rt<dTotal) lose++; else push++; });
+      continue;
+    }
+    if(bust){ lose++; continue; }
+    const dTotal=playDealer(dealer[0],counts,rng);
+    if(dTotal>21) win++; else if(finalTotal>dTotal) win++; else if(finalTotal<dTotal) lose++; else push++;
+  }
+  const denom = action==='split'? trials*2 : trials;
+  return {win:win/denom, push:push/denom, lose:lose/denom};
+}
+
+// ---- render ----
+function slotEl(r, who, index, isSelected){
+  const wrap=document.createElement('div');
+  wrap.className='slot-wrap';
+  const s=document.createElement('div');
+  s.className='slot'+(r?' filled':'')+(isSelected?' selected':'');
+  s.textContent = r || '';
+  s.addEventListener('click', ()=> selectSlot(who, index));
+  wrap.appendChild(s);
+  if(r){
+    const rm=document.createElement('button');
+    rm.className='slot-remove';
+    rm.textContent='×';
+    rm.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const prev = who==='dealer' ? dealer[index] : player[index];
+      if(who==='dealer') dealer[index]=null; else player[index]=null;
+      history.push({who,index,prev});
+      selectSlot(who,index);
+    });
+    wrap.appendChild(rm);
+  }
+  return wrap;
+}
+function render(){
+  if(document.activeElement !== betInput) betInput.value=bet;
+
+  // trim/extend the trailing player "hit" slot: one empty slot always waits at
+  // the end, unless the hand is already bust
+  while(player.length>2 && player[player.length-1]===null && player[player.length-2]===null){
+    player.pop();
+  }
+  if(!playerBust() && player[player.length-1]!==null){
+    player.push(null);
+  }
+  if(playerBust() && player[player.length-1]===null){
+    player.pop();
+  }
+  if(selected.who==='player' && selected.index>=player.length){
+    selected={who:'player', index:player.length-1};
+  }
+
+  // dealer slots
+  const dEl=document.getElementById('dealerSlots');
+  dEl.innerHTML='';
+  for(let i=0;i<dealer.length;i++){
+    dEl.appendChild(slotEl(dealer[i], 'dealer', i, selected.who==='dealer' && selected.index===i));
+  }
+  const dTxt=document.getElementById('dealerTotalTxt');
+  if(dealer[0]){
+    if(holeRevealed && dealer[1]){
+      const t=handTotal(dealer.filter(Boolean)).total;
+      dTxt.innerHTML='dealer '+t+(t>21?' <span class="bust">bust</span>':'');
+    } else { dTxt.textContent='dealer showing '+rv(dealer[0])+(dealer[0]==='A'?'/11':''); }
+  } else dTxt.textContent='dealer -';
+
+  // player slots
+  const pEl=document.getElementById('playerSlots');
+  pEl.innerHTML='';
+  for(let i=0;i<player.length;i++){
+    pEl.appendChild(slotEl(player[i], 'player', i, selected.who==='player' && selected.index===i));
+  }
+  const pTxt=document.getElementById('playerTotalTxt');
+  if(pc().length){
+    const {total,soft}=handTotal(pc());
+    let tag='';
+    if(total>21) tag=' <span class="bust">bust, no more cards</span>';
+    else if(total===21 && pc().length===2) tag=' <span class="bj">blackjack</span>';
+    pTxt.innerHTML='you '+(soft&&total<=21?'soft ':'')+total+tag;
+  } else pTxt.textContent='you -';
+
+  // hint reflects whichever slot is selected right now
+  const label = selected.who==='dealer'
+    ? (selected.index===0 ? "DEALER'S UP-CARD" : "DEALER'S HOLE CARD")
+    : (selected.index<2 ? 'YOUR CARD '+(selected.index+1) : 'ADD A CARD (HIT)');
+  document.getElementById('targetHint').textContent=label;
+  document.getElementById('stepLabel').textContent='select a card box, then tap a rank';
+
+  renderReadout();
+}
+
+function renderReadout(){
+  const host=document.getElementById('readoutHost');
+  const cards=pc();
+  if(!dealer[0] || cards.length<2){
+    host.innerHTML = `<div class="readout idle">Select the dealer's up-card box, then your two card boxes, and tap a rank for each to get a reading.</div>`;
+    return;
+  }
+  const pTotal=handTotal(cards).total;
+  if(pTotal>21){
+    host.innerHTML = `<div class="readout"><div class="call-row"><div><div class="call-label">Reading</div><div class="call-action" style="color:var(--lose);">BUST</div></div><div class="call-ev">lose <b>−£${bet}</b></div></div></div>`;
+    return;
+  }
+  if(cards.length===2 && pTotal===21 && !(holeRevealed && handTotal(dealer.filter(Boolean)).total===21 && dealer.length===2)){
+    const win=bet*bjPayout;
+    host.innerHTML = `<div class="readout"><div class="bj-banner"><div class="call-row" style="margin-bottom:0;">
+      <div><div class="call-label">Natural</div><div class="call-action">BLACKJACK</div></div>
+      <div class="call-ev">pays ${bjPayoutLabel()}<br><b>+£${win.toFixed(2)}</b></div>
+    </div></div></div>`;
+    return;
+  }
+  const TRIALS=1500;
+  const results={ stand: simulate('stand',TRIALS), hit: simulate('hit',TRIALS) };
+  const canDouble = cards.length===2;
+  if(canDouble) results.double = simulate('double',TRIALS);
+  const isPair = cards.length===2 && rv(cards[0])===rv(cards[1]);
+  if(isPair) results.split = simulate('split',TRIALS);
+
+  const mult={stand:1,hit:1,double:2,split:2};
+  const evFrac={}; Object.keys(results).forEach(k=> evFrac[k]=results[k].win-results[k].lose);
+  const best=Object.keys(evFrac).reduce((a,b)=> evFrac[a]>=evFrac[b]?a:b);
+  const labels={stand:'STAND',hit:'HIT',double:'DOUBLE',split:'SPLIT'};
+  const bestEv = evFrac[best]*mult[best]*bet;
+
+  let html = `<div class="readout">
+    <div class="call-row">
+      <div><div class="call-label">Best play</div><div class="call-action">${labels[best]}</div></div>
+      <div class="call-ev">EV @ £${bet}<br><b>${bestEv>=0?'+':''}£${bestEv.toFixed(2)}</b></div>
+    </div>`;
+
+  Object.keys(labels).forEach(key=>{
+    if(!results[key]) return;
+    const r=results[key];
+    const stake=bet*mult[key];
+    const ev=evFrac[key]*mult[key]*bet;
+    html += `<div class="meter-row">
+      <div class="meter-head">
+        <span class="nm">${labels[key]}${key===best?'<span class="star">◆</span>':''}</span>
+        <span class="pct">EV ${ev>=0?'+':''}£${ev.toFixed(2)}</span>
+      </div>
+      <div class="meter">
+        <div class="win" style="width:${r.win*100}%"></div>
+        <div class="push" style="width:${r.push*100}%"></div>
+        <div class="lose" style="width:${r.lose*100}%"></div>
+      </div>
+      <div class="meter-legend">
+        <span><i class="i-win"></i>win ${(r.win*100).toFixed(1)}%</span>
+        <span><i class="i-push"></i>push ${(r.push*100).toFixed(1)}%</span>
+        <span><i class="i-lose"></i>lose ${(r.lose*100).toFixed(1)}%</span>
+      </div>
+      <div class="payout-note">risking <b>£${stake}</b>, win <b>+£${stake}</b> · push <b>£0</b> · lose <b>−£${stake}</b></div>
+    </div>`;
+  });
+  html += `</div>`;
+  host.innerHTML = html;
+}
+
+// blank table, nothing is assumed, every slot waits for a tap
+render();
+
+// ---- Chances Table (static reference chart) ----
+const DEALER_COLS=['2','3','4','5','6','7','8','9','10','A'];
+// standard multi-deck, dealer-stands-on-soft-17 basic strategy
+const STRATEGY = {
+  hard:[
+    { label:'4–7',  row:'H H H H H H H H H H' },
+    { label:'8',    row:'H H H H H H H H H H' },
+    { label:'9',    row:'H D D D D H H H H H' },
+    { label:'10',   row:'D D D D D D D D H H' },
+    { label:'11',   row:'D D D D D D D D D H' },
+    { label:'12',   row:'H H S S S H H H H H' },
+    { label:'13',   row:'S S S S S H H H H H' },
+    { label:'14',   row:'S S S S S H H H H H' },
+    { label:'15',   row:'S S S S S H H H H H' },
+    { label:'16',   row:'S S S S S H H H H H' },
+  ],
+  soft:[
+    { label:'A2', row:'H H H D D H H H H H' },
+    { label:'A3', row:'H H H D D H H H H H' },
+    { label:'A4', row:'H H D D D H H H H H' },
+    { label:'A5', row:'H H D D D H H H H H' },
+    { label:'A6', row:'H D D D D H H H H H' },
+    { label:'A7', row:'S D D D D S S H H H' },
+    { label:'A8', row:'S S S S S S S S S S' },
+    { label:'A9', row:'S S S S S S S S S S' },
+  ],
+  pairs:[
+    { label:'2,2', row:'Sp Sp Sp Sp Sp Sp H H H H' },
+    { label:'3,3', row:'Sp Sp Sp Sp Sp Sp H H H H' },
+    { label:'6,6', row:'Sp Sp Sp Sp Sp H H H H H' },
+    { label:'7,7', row:'Sp Sp Sp Sp Sp Sp H H H H' },
+    { label:'8,8', row:'Sp Sp Sp Sp Sp Sp Sp Sp Sp Sp' },
+    { label:'9,9', row:'Sp Sp Sp Sp Sp S Sp Sp S S' },
+    { label:'A,A', row:'Sp Sp Sp Sp Sp Sp Sp Sp Sp Sp' },
+  ],
+};
+const CELL_CLASS = { H:'c-hit', S:'c-stand', D:'c-double', Sp:'c-split' };
+
+function buildStrategyTable(){
+  const table=document.getElementById('strategyTable');
+  let html='<thead><tr><th class="corner">Your hand</th>';
+  DEALER_COLS.forEach(c=> html+=`<th>${c}</th>`);
+  html+='</tr></thead><tbody>';
+
+  function section(title, rows){
+    html+=`<tr class="section-row"><th colspan="1">${title}</th>`+DEALER_COLS.map(()=>'<td></td>').join('')+'</tr>';
+    rows.forEach(r=>{
+      html+=`<tr><th>${r.label}</th>`;
+      r.row.split(' ').forEach(v=>{
+        html+=`<td class="cell ${CELL_CLASS[v]}">${v}</td>`;
+      });
+      html+='</tr>';
+    });
+  }
+  section('Hard totals', STRATEGY.hard);
+  section('Soft totals', STRATEGY.soft);
+  section('Pairs', STRATEGY.pairs);
+  html+='</tbody>';
+  table.innerHTML=html;
+}
+buildStrategyTable();
+
+document.getElementById('openChart').addEventListener('click', ()=>{
+  document.getElementById('mainView').hidden=true;
+  document.getElementById('chartView').hidden=false;
+  window.scrollTo(0,0);
+});
+document.getElementById('closeChart').addEventListener('click', ()=>{
+  document.getElementById('chartView').hidden=true;
+  document.getElementById('mainView').hidden=false;
+});
+
+// Real sign-in/sign-up now happens in the Next.js app (/signin, /signup)
+// before this page is ever loaded. This file is only served, inside an
+// iframe, to a user the server has already confirmed is signed in AND paid.
+// So the flow here is just: intro -> calculator.
+
+document.getElementById('introContinue').addEventListener('click', ()=>{
+  document.getElementById('introView').hidden=true;
+  document.getElementById('mainView').hidden=false;
+});
+
+document.getElementById('signOutBtn').addEventListener('click', ()=>{
+  // this page runs inside an iframe on /app, sending the whole tab to
+  // /logout (not just this frame) is what actually ends the Supabase session
+  window.top.location.href='/logout';
+});
+</script>
