@@ -83,14 +83,14 @@ export default function SignUp() {
             <div className="plans">
               <div className={`plan-card${plan === 'monthly' ? ' selected' : ''}`} onClick={() => setPlan('monthly')}>
                 <div className="plan-name">Monthly</div>
-                <div className="plan-price">£5.99<span>/mo</span></div>
+                <div className="plan-price">£4.99<span>/mo</span></div>
                 <div className="plan-sub">billed monthly, cancel anytime</div>
               </div>
               <div className={`plan-card${plan === 'lifetime' ? ' selected' : ''}`} onClick={() => setPlan('lifetime')}>
                 <span className="plan-badge">Pay once</span>
                 <div className="plan-name">Lifetime</div>
                 <div className="plan-price">£19.99<span>/once</span></div>
-                <div className="plan-sub">~3.3 months of monthly, then free forever</div>
+                <div className="plan-sub">~4 months of monthly, then free forever</div>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function SignUp() {
           </button>
           <p className="auth-fineprint">
             {plan === 'monthly'
-              ? "You'll be billed £5.99/mo starting today. Cancel anytime."
+              ? "You'll be billed £4.99/mo starting today. Cancel anytime."
               : "You'll be charged £19.99 once, no recurring billing, ever."}
           </p>
         </form>
