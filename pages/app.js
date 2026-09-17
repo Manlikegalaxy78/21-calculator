@@ -70,7 +70,7 @@ export default function AppGate() {
               <span className="plan-badge">Pay once</span>
               <div className="plan-name">Lifetime</div>
               <div className="plan-price">£19.99<span>/once</span></div>
-              <div className="plan-sub">~3.3 months of monthly, then free forever</div>
+              <div className="plan-sub">~4 months of monthly, then free forever</div>
             </div>
           </div>
           <button className="auth-submit" style={{ marginTop: 14 }} disabled={!!busyPlan} onClick={() => buy('monthly')}>
