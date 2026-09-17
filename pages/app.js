@@ -63,7 +63,7 @@ export default function AppGate() {
           <div className="plans">
             <div className="plan-card selected" onClick={() => buy('monthly')}>
               <div className="plan-name">Monthly</div>
-              <div className="plan-price">£5.99<span>/mo</span></div>
+              <div className="plan-price">£4.99<span>/mo</span></div>
               <div className="plan-sub">billed monthly, cancel anytime</div>
             </div>
             <div className="plan-card" onClick={() => buy('lifetime')}>
